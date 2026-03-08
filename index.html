@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web ShareIt - কোড দিয়ে কানেক্ট</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --success: #2ecc71;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #333; }
+        
+        .app-container {
+            width: 100%; max-width: 400px; background: var(--card);
+            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden; padding: 20px; text-align: center;
+        }
+
+        h2 { margin: 0 0 10px; color: var(--primary); }
+        p { color: #666; font-size: 0.9rem; margin-bottom: 20px; }
+
+        /* Screens */
+        .screen { display: none; animation: fadeIn 0.4s; }
+        .screen.active { display: block; }
+
+        /* Buttons */
+        .btn-big {
+            display: block; width: 100%; padding: 15px; margin: 10px 0;
+            border: none; border-radius: 12px; font-size: 1.1rem; cursor: pointer;
+            transition: 0.2s; color: white; font-weight: bold;
+        }
+        .btn-send { background: var(--primary); }
+        .btn-receive { background: var(--success); }
+        .btn-back { background: #95a5a6; margin-top: 10px; }
+        
+        /* Inputs */
+        .code-display {
+            font-size: 2.5rem; letter-spacing: 5px; font-weight: bold;
+            color: var(--primary); margin: 20px 0; border: 2px dashed #ddd;
+            padding: 10px; border-radius: 10px; background: #f9f9f9;
+        }
+        
+        .code-input {
+            width: 80%; padding: 15px; font-size: 1.5rem; text-align: center;
+            border: 2px solid #ddd; border-radius: 10px; letter-spacing: 3px;
+            margin-bottom: 15px; outline: none;
+        }
+        .code-input:focus { border-color: var(--success); }
+
+        /* File Area */
+        .file-drop {
+            border: 2px dashed #aaa; padding: 30px; border-radius: 10px;
+            margin-top: 20px; cursor: pointer; background: #fafafa;
+        }
+        .file-drop:hover { border-color: var(--primary); background: #eef5ff; }
+        
+        .status-msg { margin-top: 15px; font-weight: bold; color: #555; }
+        .progress { height: 6px; background: #eee; border-radius: 3px; margin-top: 10px; overflow: hidden; display: none;}
+        .progress-bar { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <!-- 1. HOME SCREEN -->
+    <div id="home-screen" class="screen active">
+        <h2>Web ShareIt</h2>
+        <p>ফাইল পাঠাতে বা গ্রহণ করতে অপশন বেছে নিন</p>
+        <button class="btn-big btn-send" onclick="startSenderMode()">
+            <i class="fas fa-paper-plane"></i> সেন্ড (Send)
+        </button>
+        <button class="btn-big btn-receive" onclick="startReceiverMode()">
+            <i class="fas fa-download"></i> রিসিভ (Receive)
+        </button>
+    </div>
+
+    <!-- 2. SENDER SCREEN (Shows Code) -->
+    <div id="sender-screen" class="screen">
+        <h3>আপনার কানেকশন কোড</h3>
+        <p>এই কোডটি রিসিভারকে বলুন</p>
+        <div class="code-display" id="my-code">...</div>
+        <div class="status-msg" id="sender-status">রিসিভারের জন্য অপেক্ষা করছি...</div>
+        <button class="btn-big btn-back" onclick="location.reload()">বাতিল করুন</button>
+    </div>
+
+    <!-- 3. RECEIVER SCREEN (Inputs Code) -->
+    <div id="receiver-screen" class="screen">
+        <h3>কোড প্রবেশ করান</h3>
+        <p>সেন্ডারের স্ক্রিনে থাকা কোডটি লিখুন</p>
+        <input type="number" id="input-code" class="code-input" placeholder="123456">
+        <button class="btn-big btn-receive" onclick="connectToSender()">কানেক্ট করুন</button>
+        <button class="btn-big btn-back" onclick="location.reload()">বাতিল করুন</button>
+        <div class="status-msg" id="receiver-status"></div>
+    </div>
+
+    <!-- 4. TRANSFER SCREEN (For both) -->
+    <div id="transfer-screen" class="screen">
+        <h3 style="color:var(--success)">✅ কানেক্টেড!</h3>
+        
+        <!-- Only Sender sees this -->
+        <div id="sender-ui" style="display:none;">
+            <input type="file" id="file-input" style="display:none">
+            <div class="file-drop" onclick="document.getElementById('file-input').click()">
+                <i class="fas fa-file-upload fa-3x" style="color:#aaa;"></i>
+                <p>ফাইল সিলেক্ট করতে ক্লিক করুন</p>
+            </div>
+            <div id="file-name" style="margin-top:10px; font-weight:bold;"></div>
+        </div>
+
+        <!-- Only Receiver sees this -->
+        <div id="receiver-ui" style="display:none;">
+            <div class="file-drop" style="cursor: default;">
+                <i class="fas fa-spinner fa-spin fa-3x" style="color:var(--primary);"></i>
+                <p>সেন্ডার ফাইল পাঠাচ্ছেন, অপেক্ষা করুন...</p>
+            </div>
+        </div>
+
+        <!-- Progress for both -->
+        <div class="status-msg" id="transfer-status"></div>
+        <div class="progress" id="progress-container">
+            <div class="progress-bar" id="progress-fill"></div>
+        </div>
+
+        <a id="download-btn" class="btn-big btn-success" style="display:none; background:var(--primary); text-decoration:none; margin-top:20px;">
+            ⬇️ ডাউনলোড করুন
+        </a>
+    </div>
+
+</div>
+
+<script>
+    let peer = null;
+    let conn = null;
+    let myId = null;
+
+    // --- UTILS ---
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function generateCode() {
+        return Math.floor(100000 + Math.random() * 900000).toString(); // ৬ সংখ্যার কোড
+    }
+
+    // --- SENDER LOGIC ---
+    function startSenderMode() {
+        showScreen('sender-screen');
+        const code = generateCode();
+        document.getElementById('my-code').innerText = code;
+        
+        // PeerJS ইনিশিয়ালাইজ (কাস্টম আইডি হিসেবে কোড ব্যবহার করা হচ্ছে)
+        peer = new Peer('shareit-' + code); 
+
+        peer.on('open', (id) => {
+            console.log('My Peer ID is: ' + id);
+        });
+
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+            document.getElementById('sender-status').innerText = "কানেক্ট হচ্ছে...";
+        });
+
+        peer.on('error', (err) => {
+            alert("কোড জেনারেট করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।");
+            location.reload();
+        });
+    }
+
+    // --- RECEIVER LOGIC ---
+    function startReceiverMode() {
+        showScreen('receiver-screen');
+        peer = new Peer(); // রিসিভারের আইডির দরকার নেই
+    }
+
+    function connectToSender() {
+        const inputCode = document.getElementById('input-code').value;
+        if(inputCode.length !== 6) {
+            alert("দয়া করে ৬ সংখ্যার সঠিক কোড দিন");
+            return;
+        }
+
+        document.getElementById('receiver-status').innerText = "খোঁজা হচ্ছে...";
+        
+        // সেন্ডারের আইডিতে কানেক্ট (প্রিফিক্স সহ)
+        conn = peer.connect('shareit-' + inputCode);
+
+        conn.on('open', () => {
+            setupConnection();
+        });
+
+        conn.on('error', () => {
+            alert("কানেক্ট করা যায়নি! কোডটি চেক করুন।");
+            location.reload();
+        });
+        
+        // ৫ সেকেন্ডের মধ্যে কানেক্ট না হলে এরর
+        setTimeout(() => {
+            if(!conn.open) {
+                document.getElementById('receiver-status').innerText = "সেন্ডারকে পাওয়া যাচ্ছে না...";
+            }
+        }, 5000);
+    }
+
+    // --- COMMON CONNECTION LOGIC ---
+    function setupConnection() {
+        showScreen('transfer-screen');
+
+        // UI সেটআপ
+        if (peer.id.startsWith('shareit-')) {
+            // আমি সেন্ডার
+            document.getElementById('sender-ui').style.display = 'block';
+            setupFileSending();
+        } else {
+            // আমি রিসিভার
+            document.getElementById('receiver-ui').style.display = 'block';
+            setupFileReceiving();
+        }
+    }
+
+    // --- FILE SENDING ---
+    function setupFileSending() {
+        const fileInput = document.getElementById('file-input');
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('file-name').innerText = file.name;
+            document.getElementById('transfer-status').innerText = "পাঠানো হচ্ছে...";
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('progress-fill').style.width = '20%';
+
+            // ১. মেটাডেটা পাঠানো
+            conn.send({
+                type: 'meta',
+                name: file.name,
+                size: file.size,
+                filetype: file.type
+            });
+
+            // ২. ফাইল পাঠানো (Blob)
+            setTimeout(() => {
+                const blob = new Blob([file], { type: file.type });
+                conn.send({
+                    type: 'file',
+                    blob: blob
+                });
+                
+                document.getElementById('progress-fill').style.width = '100%';
+                document.getElementById('transfer-status').innerText = "✅ ফাইল পাঠানো সম্পন্ন!";
+            }, 500);
+        });
+    }
+
+    // --- FILE RECEIVING ---
+    function setupFileReceiving() {
+        let incomingMeta = null;
+
+        conn.on('data', (data) => {
+            if (data.type === 'meta') {
+                incomingMeta = data;
+                document.getElementById('transfer-status').innerText = `ডাউনলোড হচ্ছে: ${data.name}`;
+                document.getElementById('progress-container').style.display = 'block';
+                document.getElementById('progress-fill').style.width = '50%';
+            } 
+            else if (data.type === 'file') {
+                document.getElementById('progress-fill').style.width = '100%';
+                document.getElementById('transfer-status').innerText = "✅ ফাইল রিসিভ হয়েছে!";
+                
+                // ডাউনলোড লিঙ্ক তৈরি
+                const blob = new Blob([data.blob], { type: incomingMeta.filetype });
+                const url = URL.createObjectURL(blob);
+                
+                const btn = document.getElementById('download-btn');
+                btn.href = url;
+                btn.download = incomingMeta.name;
+                btn.style.display = 'block';
+                btn.innerText = `⬇️ ডাউনলোড করুন (${(incomingMeta.size/1024/1024).toFixed(2)} MB)`;
+                
+                // আইকন পরিবর্তন
+                document.querySelector('#receiver-ui i').className = "fas fa-check-circle fa-3x";
+                document.querySelector('#receiver-ui i').style.color = "var(--success)";
+                document.querySelector('#receiver-ui p').innerText = "ফাইল প্রস্তুত!";
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
