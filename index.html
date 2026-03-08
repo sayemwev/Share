@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Web ShareIt</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #10b981;
+            --success-dark: #059669;
+            --danger: #ef4444;
+            --orange: #f97316;
+            --purple: #8b5cf6;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --card2: #273548;
+            --border: #334155;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --glow: rgba(59,130,246,0.3);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+            overflow-x: hidden;
+            padding: 16px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 30%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 70%, rgba(16,185,129,0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card);
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, #1e3a5f, #0f2744);
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--primary), var(--success));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text { font-size: 1.2rem; font-weight: 700; color: #fff; }
+        .logo-sub { font-size: 0.7rem; color: var(--text-muted); }
+
+        .history-btn {
+            background: var(--card2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            font-family: 'Hind Siliguri', sans-serif;
+        }
+        .history-btn:hover { background: var(--border); color: var(--text); }
+
+        .screen-body { padding: 24px; }
+
+        .screen { display: none; animation: fadeUp 0.35s ease; }
+        .screen.active { display: block; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .screen-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .screen-sub {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        /* BIG BUTTONS */
+        .btn-big {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 14px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            font-weight: 700;
+            font-family: 'Hind Siliguri', sans-serif;
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-big::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0);
+            transition: background 0.2s;
+        }
+        .btn-big:hover::after { background: rgba(255,255,255,0.1); }
+        .btn-big:active { transform: scale(0.98); }
+
+        .btn-send { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); box-shadow: 0 4px 20px rgba(59,130,246,0.3); }
+        .btn-receive { background: linear-gradient(135deg, var(--success), var(--success-dark)); box-shadow: 0 4px 20px rgba(16,185,129,0.3); }
+        .btn-back { background: var(--card2); border: 1px solid var(--border); color: var(--text-muted); margin-top: 4px; box-shadow: none; }
+        .btn-back:hover::after { background: rgba(255,255,255,0.05); }
+        .btn-send-file { background: linear-gradient(135deg, var(--orange), #dc6c10); box-shadow: 0 4px 20px rgba(249,115,22,0.3); }
+        .btn-purple { background: linear-gradient(135deg, var(--purple), #7c3aed); box-shadow: 0 4px 20px rgba(139,92,246,0.3); }
+
+        /* CODE DISPLAY */
+        .code-box {
+            background: var(--bg);
+            border: 2px solid var(--primary);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            margin: 16px 0;
+            position: relative;
+            box-shadow: 0 0 20px var(--glow);
+        }
+
+        .code-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .code-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 8px;
+        }
+
+        .copy-code-btn {
+            margin-top: 10px;
+            background: var(--card2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            font-family: 'Hind Siliguri', sans-serif;
+        }
+        .copy-code-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* CODE INPUT */
+        .code-input {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.8rem;
+            text-align: center;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            letter-spacing: 8px;
+            color: var(--text);
+            outline: none;
+            font-family: 'JetBrains Mono', monospace;
+            transition: border-color 0.2s;
+            margin-bottom: 14px;
+        }
+        .code-input:focus { border-color: var(--success); box-shadow: 0 0 15px rgba(16,185,129,0.2); }
+
+        /* STATUS */
+        .status-msg {
+            margin: 12px 0;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 1.5s infinite;
+            display: inline-block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* PROGRESS */
+        .progress { height: 6px; background: var(--border); border-radius: 3px; margin: 10px 0; overflow: hidden; display: none; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); width: 0%; transition: width 0.4s; border-radius: 3px; }
+
+        /* FILE DROP */
+        .file-drop {
+            border: 2px dashed var(--border);
+            padding: 24px 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            background: var(--bg);
+            transition: all 0.2s;
+            text-align: center;
+            margin: 8px 0;
+        }
+        .file-drop:hover { border-color: var(--orange); background: rgba(249,115,22,0.05); }
+        .file-drop p { color: var(--text-muted); font-size: 0.88rem; margin-top: 8px; margin-bottom: 0; }
+
+        /* CONNECTED HEADER */
+        .connected-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            gap: 6px;
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 6px;
+            border: none;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-family: 'Hind Siliguri', sans-serif;
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .tab-btn.active {
+            background: var(--card2);
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeUp 0.25s ease; }
+
+        /* CLIPBOARD */
+        .clipboard-area {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            margin: 8px 0;
+        }
+
+        .clipboard-textarea {
+            width: 100%;
+            min-height: 90px;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-family: 'Hind Siliguri', sans-serif;
+            font-size: 0.92rem;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .clipboard-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .clip-btn {
+            flex: 1;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: 'Hind Siliguri', sans-serif;
+            font-weight: 600;
+            transition: all 0.2s;
+            background: var(--card2);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .clip-btn:hover { color: var(--text); background: var(--border); }
+        .clip-btn.send { background: linear-gradient(135deg, var(--purple), #7c3aed); color: white; border-color: transparent; }
+        .clip-btn.send:hover { opacity: 0.9; }
+
+        /* INCOMING CLIPBOARD */
+        .incoming-clip {
+            background: rgba(16,185,129,0.08);
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 12px;
+            padding: 14px;
+            margin: 8px 0;
+            position: relative;
+        }
+
+        .incoming-clip-label {
+            font-size: 0.72rem;
+            color: var(--success);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .incoming-clip-text {
+            font-size: 0.9rem;
+            color: var(--text);
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .one-click-copy {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 7px 14px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: 'Hind Siliguri', sans-serif;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        .one-click-copy:hover { background: var(--success-dark); }
+        .one-click-copy.copied { background: #374151; color: var(--text-muted); }
+
+        /* DOWNLOAD BTN */
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-top: 12px;
+            transition: all 0.2s;
+        }
+        .download-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* HISTORY PANEL */
+        .history-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 16px;
+        }
+        .history-overlay.open { display: flex; animation: fadeUp 0.3s ease; }
+
+        .history-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 420px;
+            max-height: 75vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-title { font-weight: 700; font-size: 1rem; }
+
+        .history-actions { display: flex; gap: 8px; }
+
+        .h-btn {
+            padding: 7px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--card2);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-family: 'Hind Siliguri', sans-serif;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .h-btn:hover { background: var(--border); color: var(--text); }
+        .h-btn.danger:hover { background: var(--danger); color: white; border-color: var(--danger); }
+        .h-btn.close-h { font-size: 1.1rem; padding: 5px 12px; }
+
+        .history-list {
+            overflow-y: auto;
+            flex: 1;
+            padding: 12px;
+        }
+
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-track { background: transparent; }
+        .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .history-item {
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            position: relative;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .h-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        .h-icon.file { background: rgba(249,115,22,0.15); color: var(--orange); }
+        .h-icon.clip { background: rgba(139,92,246,0.15); color: var(--purple); }
+        .h-icon.sent { background: rgba(59,130,246,0.15); color: var(--primary); }
+        .h-icon.recv { background: rgba(16,185,129,0.15); color: var(--success); }
+
+        .h-info { flex: 1; min-width: 0; }
+        .h-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .h-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+        .h-del {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.15s;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .h-del:hover { background: var(--danger); color: white; }
+
+        .history-empty {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px 20px;
+            font-size: 0.9rem;
+        }
+
+        .history-empty i { font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.3; }
+
+        /* FILE NAME DISPLAY */
+        .file-info-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(249,115,22,0.1);
+            border: 1px solid rgba(249,115,22,0.3);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin: 8px 0;
+        }
+
+        .file-info-name { font-size: 0.85rem; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--orange); }
+
+        /* RECEIVER FILE WAIT */
+        .wait-box {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+        }
+
+        .wait-box i { margin-bottom: 10px; color: var(--primary); }
+        .wait-box p { font-size: 0.88rem; margin-top: 8px; margin-bottom: 0; }
+
+        /* DIVIDER */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 14px 0;
+        }
+
+        /* INCOMING FILE CARD */
+        .incoming-file-card {
+            background: rgba(59,130,246,0.08);
+            border: 1px solid rgba(59,130,246,0.3);
+            border-radius: 12px;
+            padding: 14px;
+            margin: 8px 0;
+        }
+
+        .incoming-file-label { font-size: 0.72rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; font-weight: 600; }
+        .incoming-file-name { font-size: 0.92rem; font-weight: 600; color: var(--text); }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 0.85rem;
+            color: var(--text);
+            z-index: 200;
+            transition: transform 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- HEADER -->
+    <div class="app-header">
+        <div class="app-logo">
+            <div class="logo-icon">⚡</div>
+            <div>
+                <div class="logo-text">Web ShareIt</div>
+                <div class="logo-sub">P2P ফাইল শেয়ার</div>
+            </div>
+        </div>
+        <button class="history-btn" onclick="openHistory()">
+            <i class="fas fa-history"></i> হিস্টরি
+        </button>
+    </div>
+
+    <div class="screen-body">
+
+        <!-- 1. HOME SCREEN -->
+        <div id="home-screen" class="screen active">
+            <div class="screen-title">শুরু করুন</div>
+            <div class="screen-sub">ফাইল বা টেক্সট পাঠাতে অথবা গ্রহণ করতে নিচের অপশন বেছে নিন।</div>
+            <button class="btn-big btn-send" onclick="startSenderMode()">
+                <i class="fas fa-paper-plane"></i> সেন্ড (Send)
+            </button>
+            <button class="btn-big btn-receive" onclick="startReceiverMode()">
+                <i class="fas fa-download"></i> রিসিভ (Receive)
+            </button>
+        </div>
+
+        <!-- 2. SENDER SCREEN -->
+        <div id="sender-screen" class="screen">
+            <div class="screen-title">আপনার কোড</div>
+            <div class="screen-sub">এই কোডটি রিসিভারকে দিন।</div>
+            <div class="code-box">
+                <div class="code-label">কানেকশন কোড</div>
+                <div class="code-number" id="my-code">------</div>
+                <button class="copy-code-btn" onclick="copyCode()"><i class="fas fa-copy"></i> কোড কপি করুন</button>
+            </div>
+            <div class="status-msg" id="sender-status">
+                <span class="pulse-dot"></span> রিসিভারের জন্য অপেক্ষা করছি...
+            </div>
+            <button class="btn-big btn-back" onclick="location.reload()"><i class="fas fa-times"></i> বাতিল করুন</button>
+        </div>
+
+        <!-- 3. RECEIVER SCREEN -->
+        <div id="receiver-screen" class="screen">
+            <div class="screen-title">কোড প্রবেশ করান</div>
+            <div class="screen-sub">সেন্ডারের স্ক্রিনে থাকা ৬ সংখ্যার কোডটি দিন।</div>
+            <input type="tel" inputmode="numeric" pattern="[0-9]*" id="input-code" class="code-input" placeholder="••••••" maxlength="6">
+            <button class="btn-big btn-receive" onclick="connectToSender()"><i class="fas fa-link"></i> কানেক্ট করুন</button>
+            <button class="btn-big btn-back" onclick="location.reload()"><i class="fas fa-times"></i> বাতিল করুন</button>
+            <div class="status-msg" id="receiver-status"></div>
+        </div>
+
+        <!-- 4. TRANSFER SCREEN -->
+        <div id="transfer-screen" class="screen">
+            <div class="connected-badge">
+                <i class="fas fa-circle" style="font-size:8px;"></i> কানেক্টেড!
+                <span id="role-badge" style="margin-left:auto; font-size:0.75rem; opacity:0.7;"></span>
+            </div>
+
+            <!-- TABS -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('file-tab', this)"><i class="fas fa-file"></i> ফাইল</button>
+                <button class="tab-btn" onclick="switchTab('clip-tab', this)"><i class="fas fa-clipboard"></i> ক্লিপবোর্ড</button>
+            </div>
+
+            <!-- FILE TAB -->
+            <div id="file-tab" class="tab-content active">
+
+                <!-- Sender File UI -->
+                <div id="sender-ui" style="display:none;">
+                    <input type="file" id="file-input" style="display:none">
+                    <div class="file-drop" onclick="document.getElementById('file-input').click()">
+                        <i class="fas fa-cloud-upload-alt fa-2x" style="color:var(--orange);"></i>
+                        <p>ক্লিক করে ফাইল সিলেক্ট করুন</p>
+                    </div>
+                    <div id="file-info-sender" style="display:none;" class="file-info-bar">
+                        <i class="fas fa-file" style="color:var(--orange);"></i>
+                        <span class="file-info-name" id="file-name-text"></span>
+                    </div>
+                </div>
+
+                <!-- Receiver File UI -->
+                <div id="receiver-ui" style="display:none;">
+                    <div id="receiver-wait" class="wait-box">
+                        <i class="fas fa-wifi fa-2x"></i>
+                        <p>সেন্ডারের ফাইলের জন্য অপেক্ষা করছি...</p>
+                    </div>
+                    <div id="incoming-file-info" style="display:none;">
+                        <div class="incoming-file-card">
+                            <div class="incoming-file-label"><i class="fas fa-arrow-down"></i> ইনকামিং ফাইল</div>
+                            <div class="incoming-file-name" id="incoming-file-name-text"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Common progress -->
+                <div class="status-msg" id="transfer-status"></div>
+                <div class="progress" id="progress-container">
+                    <div class="progress-bar" id="progress-fill"></div>
+                </div>
+                <a id="download-btn" class="download-btn" style="display:none;">
+                    <i class="fas fa-download"></i> ডাউনলোড করুন
+                </a>
+            </div>
+
+            <!-- CLIPBOARD TAB -->
+            <div id="clip-tab" class="tab-content">
+
+                <!-- Send clipboard area -->
+                <div class="clipboard-area">
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.7px; font-weight:600;">
+                        <i class="fas fa-pen"></i> টেক্সট লিখুন / পেস্ট করুন
+                    </div>
+                    <textarea class="clipboard-textarea" id="clip-input" placeholder="এখানে লিখুন বা পেস্ট করুন..."></textarea>
+                    <div class="clipboard-actions">
+                        <button class="clip-btn" onclick="pasteClipboard()"><i class="fas fa-paste"></i> পেস্ট</button>
+                        <button class="clip-btn" onclick="clearClipInput()"><i class="fas fa-eraser"></i> মুছুন</button>
+                        <button class="clip-btn send" onclick="sendClipboard()"><i class="fas fa-paper-plane"></i> পাঠান</button>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Received clipboard -->
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.7px; font-weight:600;">
+                    <i class="fas fa-inbox"></i> রিসিভ করা টেক্সট
+                </div>
+
+                <div id="clip-received-empty" style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:20px 0;">
+                    <i class="fas fa-clipboard" style="opacity:0.3; display:block; font-size:1.5rem; margin-bottom:8px;"></i>
+                    এখনো কোনো টেক্সট আসেনি
+                </div>
+
+                <div id="clip-received-list"></div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- HISTORY OVERLAY -->
+<div class="history-overlay" id="history-overlay" onclick="closeHistoryIfBg(event)">
+    <div class="history-panel">
+        <div class="history-header">
+            <span class="history-title"><i class="fas fa-history"></i> ট্রান্সফার হিস্টরি</span>
+            <div class="history-actions">
+                <button class="h-btn danger" onclick="clearAllHistory()"><i class="fas fa-trash"></i> সব মুছুন</button>
+                <button class="h-btn close-h" onclick="closeHistory()">✕</button>
+            </div>
+        </div>
+        <div class="history-list" id="history-list"></div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+    let peer = null;
+    let conn = null;
+    let isSender = false;
+    let currentCode = null;
+    const HISTORY_KEY = 'wshareit_history';
+
+    // ---- UTILS ----
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function generateCode() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    function showToast(msg, duration = 2500) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    // ---- HISTORY ----
+    function getHistory() {
+        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+    }
+
+    function saveHistory(list) {
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch {}
+    }
+
+    function addHistory(item) {
+        const list = getHistory();
+        list.unshift({ ...item, id: Date.now(), time: new Date().toLocaleString('bn-BD') });
+        if (list.length > 50) list.pop();
+        saveHistory(list);
+    }
+
+    function renderHistory() {
+        const list = getHistory();
+        const el = document.getElementById('history-list');
+        if (!list.length) {
+            el.innerHTML = `<div class="history-empty"><i class="fas fa-inbox"></i>এখনো কোনো হিস্টরি নেই</div>`;
+            return;
+        }
+        el.innerHTML = list.map(item => `
+            <div class="history-item" id="hitem-${item.id}">
+                <div class="h-icon ${item.kind === 'file' ? 'file' : 'clip'} ${item.dir === 'sent' ? 'sent' : 'recv'}">
+                    <i class="fas ${item.kind === 'file' ? 'fa-file' : 'fa-clipboard'}"></i>
+                </div>
+                <div class="h-info">
+                    <div class="h-name">${item.name || (item.text ? item.text.substring(0, 40) + (item.text.length > 40 ? '...' : '') : '-')}</div>
+                    <div class="h-meta">${item.dir === 'sent' ? '📤 পাঠানো' : '📥 রিসিভ করা'} · ${item.time}${item.size ? ' · ' + formatSize(item.size) : ''}</div>
+                </div>
+                <button class="h-del" onclick="deleteHistoryItem(${item.id})" title="মুছুন"><i class="fas fa-times"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function deleteHistoryItem(id) {
+        const list = getHistory().filter(i => i.id !== id);
+        saveHistory(list);
+        renderHistory();
+        showToast('✅ মুছে ফেলা হয়েছে');
+    }
+
+    function clearAllHistory() {
+        if (!confirm('সব হিস্টরি মুছে ফেলবেন? এটি ব্রাউজারের স্টোরেজ থেকে সরিয়ে দেবে।')) return;
+        saveHistory([]);
+        renderHistory();
+        showToast('🗑️ সব হিস্টরি মুছে ফেলা হয়েছে');
+    }
+
+    function openHistory() { renderHistory(); document.getElementById('history-overlay').classList.add('open'); }
+    function closeHistory() { document.getElementById('history-overlay').classList.remove('open'); }
+    function closeHistoryIfBg(e) { if (e.target === document.getElementById('history-overlay')) closeHistory(); }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+    }
+
+    // ---- COPY CODE ----
+    function copyCode() {
+        if (!currentCode) return;
+        navigator.clipboard.writeText(currentCode).then(() => showToast('✅ কোড কপি হয়েছে!')).catch(() => {
+            const el = document.getElementById('my-code');
+            const range = document.createRange();
+            range.selectNode(el);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            showToast('✅ কোড কপি হয়েছে!');
+        });
+    }
+
+    // ---- SENDER MODE ----
+    function startSenderMode() {
+        isSender = true;
+        showScreen('sender-screen');
+        const code = generateCode();
+        currentCode = code;
+        document.getElementById('my-code').innerText = code;
+
+        // FIX 1: Use PeerJS with explicit TURN/STUN config for iPhone compatibility
+        peer = new Peer('wshareit-' + code, {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
+                ]
+            }
+        });
+
+        peer.on('open', (id) => { console.log('Sender ID:', id); });
+
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+        });
+
+        peer.on('error', (err) => {
+            console.error(err);
+            if (err.type === 'unavailable-id') {
+                const newCode = generateCode();
+                currentCode = newCode;
+                document.getElementById('my-code').innerText = newCode;
+                peer.destroy();
+                startSenderMode();
+            } else {
+                showToast('❌ সংযোগ সমস্যা, আবার চেষ্টা করুন।');
+            }
+        });
+    }
+
+    // ---- RECEIVER MODE ----
+    function startReceiverMode() {
+        isSender = false;
+        showScreen('receiver-screen');
+
+        peer = new Peer(undefined, {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
+                ]
+            }
+        });
+
+        peer.on('error', (err) => {
+            console.error(err);
+            document.getElementById('receiver-status').innerText = '❌ সংযোগ সমস্যা';
+        });
+    }
+
+    function connectToSender() {
+        const inputCode = document.getElementById('input-code').value.trim();
+        if (inputCode.length !== 6) {
+            showToast('⚠️ ৬ সংখ্যার সঠিক কোড দিন');
+            return;
+        }
+
+        document.getElementById('receiver-status').innerHTML = '<span class="pulse-dot"></span> খোঁজা হচ্ছে...';
+
+        // FIX 1: Ensure peer is initialized before connecting
+        const doConnect = () => {
+            conn = peer.connect('wshareit-' + inputCode, { reliable: true });
+
+            conn.on('open', () => { setupConnection(); });
+
+            conn.on('error', (err) => {
+                console.error(err);
+                document.getElementById('receiver-status').innerText = '❌ কানেক্ট করা যায়নি!';
+            });
+
+            setTimeout(() => {
+                if (!conn.open) {
+                    document.getElementById('receiver-status').innerText = '⚠️ সেন্ডারকে পাওয়া যাচ্ছে না। কোডটি চেক করুন।';
+                }
+            }, 7000);
+        };
+
+        if (peer.open) {
+            doConnect();
+        } else {
+            peer.on('open', doConnect);
+        }
+    }
+
+    // ---- SETUP CONNECTION (2-WAY) ----
+    function setupConnection() {
+        showScreen('transfer-screen');
+        document.getElementById('role-badge').innerText = isSender ? 'সেন্ডার 📤' : 'রিসিভার 📥';
+
+        if (isSender) {
+            document.getElementById('sender-ui').style.display = 'block';
+            setupFileSending();
+        } else {
+            document.getElementById('receiver-ui').style.display = 'block';
+        }
+
+        // FIX 2: Both sides listen for data (2-way)
+        conn.on('data', (data) => {
+            handleIncomingData(data);
+        });
+
+        conn.on('close', () => { showToast('🔌 সংযোগ বিচ্ছিন্ন হয়েছে'); });
+        conn.on('error', () => { showToast('❌ সংযোগে সমস্যা হয়েছে'); });
+    }
+
+    // ---- HANDLE INCOMING DATA (2-WAY) ----
+    let incomingMeta = null;
+
+    function handleIncomingData(data) {
+        if (data.type === 'meta') {
+            incomingMeta = data;
+            // Show incoming file info even on sender side
+            document.getElementById('transfer-status').innerText = `📥 ইনকামিং: ${data.name}`;
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('progress-fill').style.width = '40%';
+
+            // Show in receiver UI if visible
+            const infoBox = document.getElementById('incoming-file-info');
+            const waitBox = document.getElementById('receiver-wait');
+            if (infoBox) {
+                document.getElementById('incoming-file-name-text').innerText = data.name;
+                infoBox.style.display = 'block';
+                if (waitBox) waitBox.style.display = 'none';
+            }
+
+        } else if (data.type === 'file') {
+            document.getElementById('progress-fill').style.width = '100%';
+            document.getElementById('transfer-status').innerText = '✅ ফাইল রিসিভ হয়েছে!';
+
+            const blob = new Blob([data.blob], { type: incomingMeta ? incomingMeta.filetype : 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const btn = document.getElementById('download-btn');
+            btn.href = url;
+            btn.download = incomingMeta ? incomingMeta.name : 'file';
+            btn.style.display = 'flex';
+            const sz = incomingMeta ? formatSize(incomingMeta.size) : '';
+            btn.innerHTML = `<i class="fas fa-download"></i> ডাউনলোড করুন ${sz ? '(' + sz + ')' : ''}`;
+
+            // Switch to file tab
+            switchTab('file-tab', document.querySelector('.tab-btn'));
+
+            // Save to history
+            addHistory({ kind: 'file', name: incomingMeta ? incomingMeta.name : 'file', size: incomingMeta ? incomingMeta.size : 0, dir: 'recv' });
+
+        } else if (data.type === 'clipboard') {
+            // FIX 3: Show incoming clipboard text
+            addIncomingClipboard(data.text);
+            addHistory({ kind: 'clip', text: data.text, dir: 'recv' });
+            showToast('📋 নতুন টেক্সট এসেছে!');
+
+            // Switch to clipboard tab
+            const tabs = document.querySelectorAll('.tab-btn');
+            switchTab('clip-tab', tabs[1]);
+        }
+    }
+
+    // ---- FILE SENDING ----
+    function setupFileSending() {
+        const fileInput = document.getElementById('file-input');
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('file-info-sender').style.display = 'flex';
+            document.getElementById('file-name-text').innerText = file.name;
+            document.getElementById('transfer-status').innerText = '📤 পাঠানো হচ্ছে...';
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('progress-fill').style.width = '20%';
+
+            conn.send({ type: 'meta', name: file.name, size: file.size, filetype: file.type });
+
+            setTimeout(() => {
+                const blob = new Blob([file], { type: file.type });
+                conn.send({ type: 'file', blob });
+                document.getElementById('progress-fill').style.width = '100%';
+                document.getElementById('transfer-status').innerText = '✅ ফাইল পাঠানো সম্পন্ন!';
+                addHistory({ kind: 'file', name: file.name, size: file.size, dir: 'sent' });
+            }, 400);
+        });
+    }
+
+    // ---- CLIPBOARD SEND ----
+    function sendClipboard() {
+        const text = document.getElementById('clip-input').value.trim();
+        if (!text) { showToast('⚠️ কিছু লিখুন আগে'); return; }
+        if (!conn || !conn.open) { showToast('❌ কানেক্টেড নয়'); return; }
+
+        conn.send({ type: 'clipboard', text });
+        document.getElementById('clip-input').value = '';
+        showToast('✅ টেক্সট পাঠানো হয়েছে!');
+        addHistory({ kind: 'clip', text, dir: 'sent' });
+    }
+
+    async function pasteClipboard() {
+        try {
+            // FIX 1: iOS compatible paste
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('clip-input').value = text;
+            } else {
+                document.getElementById('clip-input').focus();
+                showToast('💡 কীবোর্ড দিয়ে পেস্ট করুন (Ctrl+V / Cmd+V)');
+            }
+        } catch {
+            document.getElementById('clip-input').focus();
+            showToast('💡 কীবোর্ড দিয়ে পেস্ট করুন');
+        }
+    }
+
+    function clearClipInput() {
+        document.getElementById('clip-input').value = '';
+    }
+
+    // ---- INCOMING CLIPBOARD DISPLAY ----
+    function addIncomingClipboard(text) {
+        document.getElementById('clip-received-empty').style.display = 'none';
+        const list = document.getElementById('clip-received-list');
+        const id = 'clip-' + Date.now();
+        const div = document.createElement('div');
+        div.className = 'incoming-clip';
+        div.id = id;
+        div.innerHTML = `
+            <div class="incoming-clip-label"><i class="fas fa-arrow-down"></i> রিসিভ করা টেক্সট · ${new Date().toLocaleTimeString('bn-BD')}</div>
+            <div class="incoming-clip-text">${escapeHtml(text)}</div>
+            <button class="one-click-copy" id="copybtn-${id}" onclick="oneClickCopy(this, ${JSON.stringify(text)})">
+                <i class="fas fa-copy"></i> এক ক্লিকে কপি
+            </button>
+        `;
+        list.insertBefore(div, list.firstChild);
+    }
+
+    function oneClickCopy(btn, text) {
+        const copyFn = () => {
+            btn.innerHTML = '<i class="fas fa-check"></i> কপি হয়েছে!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-copy"></i> এক ক্লিকে কপি';
+                btn.classList.remove('copied');
+            }, 2000);
+            showToast('✅ কপি হয়েছে!');
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(copyFn).catch(() => {
+                fallbackCopy(text);
+                copyFn();
+            });
+        } else {
+            fallbackCopy(text);
+            copyFn();
+        }
+    }
+
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } catch {}
+        document.body.removeChild(ta);
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+    }
+</script>
+
+</body>
+</html>
